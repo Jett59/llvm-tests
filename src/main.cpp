@@ -48,14 +48,18 @@ int main() {
       builder.CreateLoad(Type::getFloatTy(context), global, "load");
   // Add one and store back to global to ensure the load is done as float.
   Value *addInst = builder.CreateFAdd(
-      loadInst, ConstantFP::get(Type::getFloatTy(context), 1));
+      loadInst, ConstantFP::get(Type::getFloatTy(context), 1.0), "add");
   builder.CreateStore(addInst, global);
+  // Now bitcast the loaded value to i32 and return it.
   Value *bitcastInst =
       builder.CreateBitCast(loadInst, Type::getInt32Ty(context), "bitcast");
   builder.CreateRet(bitcastInst);
-  // Verify and print.
-  verifyModule(module);
+  // Verify and print the module.
   module.print(errs(), nullptr);
+  if (verifyModule(module, &errs())) {
+    errs() << "Error verifying module\n";
+    return 1;
+  }
   // Create the assembly code.
   std::error_code ec;
   raw_fd_ostream dest("test.s", ec, sys::fs::OF_None);
@@ -70,4 +74,5 @@ int main() {
     return 1;
   }
   pass.run(module);
+  dest.flush();
 }
